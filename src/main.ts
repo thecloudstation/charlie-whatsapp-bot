@@ -18,6 +18,7 @@ async function main() {
     console.log(`Instance: ${config.evolutionInstance}`);
     console.log(`Charlie API: ${config.charlieApiUrl}`);
     console.log(`Project ID: ${config.charlieProjectId}`);
+    console.log(`Charlie webhook: ${config.webhookBaseUrl}/charlie-webhook`);
   });
 
   // Graceful shutdown

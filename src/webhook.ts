@@ -349,6 +349,10 @@ export function createWebhookRouter(config: Config): Router {
 
   // --- Health check ---
 
+  router.get("/", (_req: Request, res: Response) => {
+    res.json({ status: "ok" });
+  });
+
   router.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", instance: config.evolutionInstance });
   });
@@ -366,7 +370,10 @@ export function createWebhookRouter(config: Config): Router {
 
     // Extract remoteJid from conversation_id format "whatsapp-{remoteJid}"
     const remoteJid = conversationId.replace(/^whatsapp-/, "");
-    if (!remoteJid || remoteJid === conversationId) return;
+    if (!remoteJid || remoteJid === conversationId) {
+      console.warn(`[CHARLIE] Could not extract remoteJid from conversation_id: ${conversationId}`);
+      return;
+    }
 
     console.log(`[CHARLIE] Response for ${remoteJid}: ${content.substring(0, 100)}...`);
 
