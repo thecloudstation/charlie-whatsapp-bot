@@ -9,6 +9,24 @@ const WHATSAPP_MAX_LENGTH = 65536;
 /** Max file size for base64 encoding (20 MB). Larger files get text-only description. */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
+/**
+ * Match an [ESCALATE: <summary>] marker the agent emits to request human handoff.
+ * Anchored to end-of-message; agent is instructed to put it on its own line at the end.
+ */
+const ESCALATION_MARKER_RE = /\[ESCALATE:\s*([^\]]+?)\]\s*$/m;
+
+/**
+ * Extract an escalation marker from agent content.
+ * Returns the cleaned content (with marker stripped) and the summary, if present.
+ */
+function extractEscalation(content: string): { content: string; summary?: string } {
+  const match = content.match(ESCALATION_MARKER_RE);
+  if (!match) return { content };
+  const summary = match[1].trim();
+  const cleaned = content.replace(ESCALATION_MARKER_RE, "").trimEnd();
+  return { content: cleaned, summary };
+}
+
 // ---------------------------------------------------------------------------
 // Response helpers
 // ---------------------------------------------------------------------------
@@ -347,10 +365,10 @@ export function createWebhookRouter(config: Config): Router {
   const charlie = new CharlieClient(config);
   const evolution = new EvolutionClient(config);
 
-  // --- Health check ---
+  // --- Health checks ---
 
   router.get("/", (_req: Request, res: Response) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", instance: config.evolutionInstance });
   });
 
   router.get("/health", (_req: Request, res: Response) => {
@@ -363,6 +381,8 @@ export function createWebhookRouter(config: Config): Router {
     res.sendStatus(200);
 
     const payload = req.body;
+    console.log(`[WEBHOOK] Received POST /charlie-webhook — conversation_id: ${payload?.conversation_id}, event_type: ${payload?.message?.event_type}`);
+
     const conversationId: string | undefined = payload?.conversation_id;
     const content: string | undefined = payload?.message?.content;
 
@@ -377,12 +397,42 @@ export function createWebhookRouter(config: Config): Router {
 
     console.log(`[CHARLIE] Response for ${remoteJid}: ${content.substring(0, 100)}...`);
 
+    // Parse out the [ESCALATE: ...] marker (if any) BEFORE sending to the customer
+    const { content: customerContent, summary: escalationSummary } = extractEscalation(content.trim());
+
     try {
-      await sendCharlieResponse(evolution, remoteJid, content);
+      if (customerContent) {
+        await sendCharlieResponse(evolution, remoteJid, customerContent);
+      }
     } catch (error) {
       console.error(`[ERROR] Failed to deliver response to ${remoteJid}:`, error instanceof Error ? error.message : error);
     } finally {
       evolution.sendPresence(remoteJid, "paused").catch(() => {});
+    }
+
+    // If the agent escalated, forward a one-message summary to the escalation destination
+    if (escalationSummary) {
+      if (!config.escalationRemoteJid) {
+        console.warn(
+          `[ESCALATION] Agent emitted [ESCALATE: ${escalationSummary}] but ESCALATION_REMOTE_JID is not set — dropping forward.`
+        );
+      } else {
+        const forwardMsg =
+          `🔔 Escalation from ${remoteJid}\n\n` +
+          `Summary: ${escalationSummary}\n\n` +
+          `Conversation ID: ${conversationId}`;
+        try {
+          await evolution.sendText(config.escalationRemoteJid, forwardMsg);
+          console.log(
+            `[ESCALATION] Forwarded ${remoteJid} → ${config.escalationRemoteJid}: ${escalationSummary.substring(0, 80)}`
+          );
+        } catch (err) {
+          console.error(
+            `[ESCALATION] Failed to forward to ${config.escalationRemoteJid}:`,
+            err instanceof Error ? err.message : err
+          );
+        }
+      }
     }
   });
 

@@ -23,6 +23,8 @@ export interface Config {
   charlieUserToken?: string;
   /** Optional agent template ID */
   charlieAgentTemplateId?: string;
+  /** WhatsApp remoteJid to forward escalations to (when agent emits [ESCALATE: ...] marker) */
+  escalationRemoteJid?: string;
 }
 
 function requireEnv(name: string): string {
@@ -58,6 +60,7 @@ export function loadConfig(): Config {
     charlieClientId: clientId,
     charlieUserToken: userToken,
     charlieAgentTemplateId: process.env.CHARLIE_AGENT_TEMPLATE_ID || undefined,
+    escalationRemoteJid: process.env.ESCALATION_REMOTE_JID || undefined,
   };
 }
 

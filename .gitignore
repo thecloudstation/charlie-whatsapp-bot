@@ -9,6 +9,7 @@ logs/
 .DS_Store
 .git-old/
 .claude/
+.cloudstation/
 .pi/
 agents/
-.cloudstation/
+reports/
