@@ -9,11 +9,12 @@ async function main() {
   console.log("Starting Charlie WhatsApp Bot...");
 
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "30mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "30mb" }));
   app.use("/", createWebhookRouter(config));
 
-  const server = app.listen(config.webhookPort, () => {
-    console.log(`Webhook server listening on port ${config.webhookPort}`);
+  const server = app.listen(config.webhookPort, "0.0.0.0", () => {
+    console.log(`Webhook server listening on 0.0.0.0:${config.webhookPort}`);
     console.log(`Evolution API: ${config.evolutionApiUrl}`);
     console.log(`Instance: ${config.evolutionInstance}`);
     console.log(`Charlie API: ${config.charlieApiUrl}`);

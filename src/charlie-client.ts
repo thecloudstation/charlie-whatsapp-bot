@@ -107,11 +107,18 @@ export class CharlieClient {
       body.content_blocks = contentBlocks;
     }
 
+    const authHeaders = this.getAuthHeaders();
+    console.log(
+      `[API] POST /v1/projects/${this.projectId}/api/message auth=${
+        "Authorization" in authHeaders ? "Authorization" : "x-api-key+x-client-id"
+      } agent_template_id=${this.agentTemplateId ? "configured" : "default"}`
+    );
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...this.getAuthHeaders(),
+        ...authHeaders,
       },
       body: JSON.stringify(body),
     });

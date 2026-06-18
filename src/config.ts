@@ -37,12 +37,18 @@ function requireEnv(name: string): string {
 
 export function loadConfig(): Config {
   const port = parseInt(process.env.WEBHOOK_PORT || "3000", 10);
-  const userToken = process.env.CHARLIE_USER_TOKEN || process.env.USER_TOKEN;
+  const configuredUserToken = process.env.CHARLIE_USER_TOKEN || process.env.USER_TOKEN;
   const apiKey = process.env.CHARLIE_API_KEY;
   const clientId = process.env.CHARLIE_CLIENT_ID;
+  const hasProjectApiAuth = Boolean(apiKey && clientId);
+
+  // Prefer Project API credentials when both are present. This prevents a stale
+  // sandbox USER_TOKEN/CHARLIE_USER_TOKEN from silently overriding production
+  // API key auth after deployment configuration is switched.
+  const userToken = hasProjectApiAuth ? undefined : configuredUserToken;
 
   // Either USER_TOKEN or API_KEY+CLIENT_ID must be provided
-  if (!userToken && (!apiKey || !clientId)) {
+  if (!hasProjectApiAuth && !userToken) {
     throw new Error(
       "Authentication required: set CHARLIE_USER_TOKEN (for local testing) or CHARLIE_API_KEY + CHARLIE_CLIENT_ID (for production)"
     );

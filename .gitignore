@@ -13,3 +13,13 @@ logs/
 .pi/
 agents/
 reports/
+>>>>>>> b65f616 (fix(bot): improve API auth handling and webhook server for lead-followup WhatsApp bot)
+.cloudstation/
+
+# Claude Wrapper Bootstrap
+.claude/
+.pi/
+.orbit/
+agents/
+logs/
+>>>>>>> b65f616 (fix(bot): improve API auth handling and webhook server for lead-followup WhatsApp bot)
